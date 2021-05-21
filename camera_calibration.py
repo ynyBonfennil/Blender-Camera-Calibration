@@ -3,6 +3,7 @@ import bpy_extras
 import numpy
 from mathutils import Matrix, Vector
 import xml.etree.ElementTree as ET
+import json
 
 #---------------------------------------------------------------
 # 3x4 P matrix from Blender camera
@@ -129,9 +130,9 @@ def project_by_object_utils(cam, point):
     return Vector((co_2d.x * render_size[0], render_size[1] - co_2d.y * render_size[1]))
 
 #---------------------------------------------------------------
-# write camera calibration data to file
+# write camera calibration data to file (xml)
 #---------------------------------------------------------------
-def write_cam_calib(RT, K, file_path):
+def write_cam_calib_xml(RT, K, file_path):
     root = ET.Element("opencv_storage")
     
     nRT = numpy.matrix(RT)
@@ -190,6 +191,27 @@ def write_cam_calib(RT, K, file_path):
     with open(file_path, "w") as f:
         f.write(file_text)
 
+#---------------------------------------------------------------
+# write camera calibration data to file (json)
+#---------------------------------------------------------------
+def write_cam_calib_json(RT, K, file_path):
+    data = {}
+    
+    nRT = numpy.matrix(RT)
+    nRT = nRT / 1000
+    data["RT"] = [nRT[0,0],nRT[0,1],nRT[0,2],nRT[0,3],
+                    nRT[1,0],nRT[1,1],nRT[1,2],nRT[1,3],
+                    nRT[2,0],nRT[2,1],nRT[2,2],nRT[2,3]]
+    
+    nK = numpy.matrix(K)
+    nK = nK/1000
+    data["K"] = [nK[0,0],nK[0,1],nK[0,2],
+                nK[1,0],nK[1,1],nK[1,2],
+                nK[2,0],nK[2,1],nK[2,2]]
+    
+    with open(file_path, "w") as f:
+        json.dump(data, f, indent=4)
+
 # ----------------------------------------------------------
 if __name__ == "__main__":
     # camer calibration
@@ -200,7 +222,7 @@ if __name__ == "__main__":
 
         # save camera calibration data to files 
         nP = numpy.matrix(P)
-        write_cam_calib(RT, K, "./calibrations/"+cam_name+".xml")
+        write_cam_calib_json(RT, K, "./calibrations/"+cam_name+".json")
     
     # rendering
     for i in range(1,6):
@@ -211,3 +233,4 @@ if __name__ == "__main__":
         scene.render.image_settings.file_format = 'PNG'
         scene.render.filepath = "./images/"+cam_name+".png"
         bpy.ops.render.render(write_still = 1)
+
